@@ -1,0 +1,36 @@
+name: dev-build
+on: 
+    push:
+      # ignore *.md file changes
+        paths-ignore:
+          - '**.md'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Setup JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x ./gradlew
+      - name: Build
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: build
+          cache-read-only: false
+      - name: Find Correct JAR
+        id: findjar
+        run: |
+          output="$(find wrapper/build/libs/ ! -name "*-sources.jar" -type f -printf "%f\n")"
+          echo "::set-output name=jarname::$output"
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.findjar.outputs.jarname }}
+          path: wrapper/build/libs/${{ steps.findjar.outputs.jarname }}
